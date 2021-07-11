@@ -13,6 +13,7 @@ import sys
 import time
 from distutils.util import strtobool
 
+import arrow
 from playwright.sync_api import sync_playwright
 from playwright.async_api import async_playwright
 
@@ -40,8 +41,12 @@ def login(page, username, password):
     frame.click('button[type=submit]')
     page.wait_for_selector('#search-time-button button')
 
-def search(username, password, date, guests=4, headless=False):
-    print(f"Searching for availability for {guests} on {date}...")
+def search(username, password, date, guests=4, extra_days=0, headless=False):
+    if extra_days:
+        end = date + datetime.timedelta(days=extra_days)
+        print(f"Searching for availability for {guests} guests from {date} to {end}...")
+    else:
+        print(f"Searching for availability for {guests} guests on {date}...")
     if not os.path.exists(COOKIE_PATH):
         print(f"Logging in...")
         with sync_playwright() as p:
@@ -57,6 +62,11 @@ def search(username, password, date, guests=4, headless=False):
         for meal in (LUNCH, DINNER):
             url = API % {'uuid': v, 'guests': guests, 'date': date, 'meal': meal}
             urls.setdefault(k, []).append(url)
+            while extra_days > 0:
+                date += datetime.timedelta(days=1)
+                url = API % {'uuid': v, 'guests': guests, 'date': date, 'meal': meal}
+                urls[k].append(url)
+                extra_days -= 1
     fetch(urls, username, password, headless=headless)
 
 
@@ -95,7 +105,9 @@ def fetch(urls, username, password, headless=False):
                 if 'offers' in time:
                     offers.setdefault(
                         time['restaurant'], []
-                    ).extend([o['time'] for o in time['offers']])
+                    ).extend([
+                        arrow.get(o['dateTime']).date().strftime('%b %d') + ' @ ' + o['time']
+                        for o in time['offers']])
 
     for k in MAP:
         if offers.get(k):
@@ -109,14 +121,18 @@ def fetch(urls, username, password, headless=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('guests', type=int)
     parser.add_argument(
         'date',
         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
     )
-    parser.add_argument('guests', type=int)
+    parser.add_argument('--extra-days', type=int, help='length of trip, e.g., 7', default=0)
     parser.add_argument("--headless", type=strtobool, nargs='?',
                         const=True, default=True)
     args = parser.parse_args()
     username = os.getenv('DISNEY_USERNAME')
     password = os.getenv('DISNEY_PASSWORD')
-    search(username, password, args.date.date(), guests=args.guests, headless=True if args.headless else False)
+    search(
+        username, password, args.date.date(), extra_days=args.extra_days,
+        guests=args.guests, headless=True if args.headless else False
+    )
