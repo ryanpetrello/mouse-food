@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 #
 # $ pip install playwright
 # $ playwright install chromium
