@@ -136,7 +136,7 @@ def fetch(urls, username, password, headless=False):
                     offers.setdefault(
                         time['restaurant'], []
                     ).extend([
-                        arrow.get(o['dateTime']).date().strftime('%b %d') + ' @ ' + o['time']
+                        arrow.get(o['dateTime']).format('dddd Do @ hh:mmA')
                         for o in time['offers']])
 
     for k, v in MAP.items():
