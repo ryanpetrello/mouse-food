@@ -113,9 +113,10 @@ if __name__ == '__main__':
         'date',
         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'),
     )
+    parser.add_argument('guests', type=int)
     parser.add_argument("--headless", type=strtobool, nargs='?',
                         const=True, default=True)
     args = parser.parse_args()
     username = os.getenv('DISNEY_USERNAME')
     password = os.getenv('DISNEY_PASSWORD')
-    search(username, password, args.date.date(), headless=True if args.headless else False)
+    search(username, password, args.date.date(), guests=args.guests, headless=True if args.headless else False)
